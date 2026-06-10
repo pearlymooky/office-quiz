@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <title>เครื่องมือนำเข้าข้อสอบ</title>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <style>
+        body { font-family: Tahoma, sans-serif; padding: 20px; background: #f4f7f6; }
+        .container { background: white; padding: 20px; border-radius: 8px; max-width: 800px; margin: 0 auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        textarea { width: 100%; height: 250px; margin-bottom: 15px; padding: 10px; box-sizing: border-box; }
+        button { background: #1a73e8; color: white; border: none; padding: 12px 20px; font-size: 16px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #1557b0; }
+        #status { margin-top: 15px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>นำเข้าคลังข้อสอบ (จาก Excel)</h2>
+        <p>เรียงคอลัมน์ 7 ช่องตามนี้: <br><b>คำถาม | ตัวเลือก1 | ตัวเลือก2 | ตัวเลือก3 | ตัวเลือก4 | เฉลย (1-4) | อธิบาย</b></p>
+        
+        <textarea id="excel-data" placeholder="ก๊อปปี้ข้อมูลข้อสอบ 7 คอลัมน์จาก Excel มาวางตรงนี้..."></textarea>
+        <button onclick="importQuestions()">เริ่มนำเข้าข้อสอบ</button>
+        
+        <div id="status" style="color: #1a73e8;">รอรับข้อมูล...</div>
+    </div>
+
+    <script>
+        // วางโค้ด Config ของคุณตรงนี้ 
+        const firebaseConfig = {
+            apiKey: "เอาโค้ดของคุณมาใส่แทนตรงนี้",
+            authDomain: "เอาโค้ดของคุณมาใส่แทนตรงนี้",
+            projectId: "เอาโค้ดของคุณมาใส่แทนตรงนี้",
+            storageBucket: "เอาโค้ดของคุณมาใส่แทนตรงนี้",
+            messagingSenderId: "เอาโค้ดของคุณมาใส่แทนตรงนี้",
+            appId: "เอาโค้ดของคุณมาใส่แทนตรงนี้"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        async function importQuestions() {
+            const rawData = document.getElementById('excel-data').value.trim();
+            if (!rawData) {
+                alert("กรุณาวางข้อมูลข้อสอบก่อนครับ");
+                return;
+            }
+
+            const rows = rawData.split('\n');
+            let successCount = 0;
+            const statusDiv = document.getElementById('status');
+            
+            statusDiv.innerText = `กำลังนำเข้าข้อสอบ ${rows.length} ข้อ... โปรดอย่าเพิ่งปิดหน้าจอ`;
+
+            for (let i = 0; i < rows.length; i++) {
+                const row = rows[i].trim();
+                if (!row) continue;
+
+                const cols = row.split('\t');
+                
+                // เช็คว่ามีอย่างน้อย 7 คอลัมน์
+                if (cols.length >= 7) {
+                    const questionText = cols[0].trim();
+                    const options = [
+                        cols[1].trim(), 
+                        cols[2].trim(), 
+                        cols[3].trim(), 
+                        cols[4].trim()
+                    ];
+                    const answer = parseInt(cols[5].trim());
+                    const explanationText = cols[6].trim(); // เพิ่มคอลัมน์คำอธิบาย
+
+                    try {
+                        // บันทึกลง Firebase พร้อมคำอธิบาย
+                        await db.collection('questions').add({
+                            question: questionText,
+                            options: options,
+                            answer: answer,
+                            explanation: explanationText
+                        });
+                        successCount++;
+                    } catch (error) {
+                        console.error("เกิดข้อผิดพลาดที่ข้อ: " + questionText, error);
+                    }
+                }
+            }
+
+            statusDiv.innerHTML = `<span style="color: green;">🎉 นำเข้าสำเร็จ ${successCount} ข้อ! ระบบพร้อมสำหรับการสุ่มข้อสอบแล้ว</span>`;
+        }
+    </script>
+</body>
+</html>
