@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <title>เครื่องมือนำเข้าข้อมูลพนักงาน</title>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <style>
+        body { font-family: Tahoma, sans-serif; padding: 20px; background: #f0f2f5; }
+        .container { background: white; padding: 20px; border-radius: 8px; max-width: 600px; margin: 0 auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        textarea { width: 100%; height: 200px; margin-bottom: 15px; padding: 10px; box-sizing: border-box; }
+        button { background: #28a745; color: white; border: none; padding: 10px 20px; font-size: 16px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #218838; }
+        #status { margin-top: 15px; font-weight: bold; color: #0056b3; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>นำเข้าข้อมูลพนักงาน (จาก Excel)</h2>
+        <p>1. ไปที่ไฟล์ Excel ก๊อปปี้ข้อมูล 3 คอลัมน์ (รหัสพนักงาน | ชื่อ-นามสกุล | แผนก) <br>
+           2. นำมาวางในช่องด้านล่างนี้ (ไม่ต้องก๊อปปี้หัวตารางมานะครับ)</p>
+        
+        <textarea id="excel-data" placeholder="วางข้อมูลพนักงานตรงนี้..."></textarea>
+        <button onclick="importData()">เริ่มนำเข้าข้อมูล</button>
+        
+        <div id="status">รอรับข้อมูล...</div>
+    </div>
+
+    <script>
+        // วางโค้ด Config ของคุณตรงนี้ 
+        const firebaseConfig = {
+            apiKey: "AIzaSyDY-LYy_ci9Jz5Wre4zDRCr8TP-58ng-bo",
+            authDomain: "my-office-quiz.firebaseapp.com",
+            projectId: "my-office-quiz",
+            storageBucket: "my-office-quiz.firebasestorage.app",
+            messagingSenderId: "1075817017274",
+            appId: "1:1075817017274:web:ac54fd1f8a9a0e3d06f783",
+            measurementId: "G-ZDXMQC8QB9"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        async function importData() {
+            const rawData = document.getElementById('excel-data').value.trim();
+            if (!rawData) {
+                alert("กรุณาวางข้อมูลก่อนครับ");
+                return;
+            }
+
+            // แยกข้อมูลเป็นบรรทัดๆ
+            const rows = rawData.split('\n');
+            let successCount = 0;
+            const statusDiv = document.getElementById('status');
+            
+            statusDiv.innerText = `กำลังนำเข้าข้อมูล ${rows.length} รายการ... โปรดอย่าเพิ่งปิดหน้าจอ`;
+
+            // วนลูปบันทึกทีละคน
+            for (let i = 0; i < rows.length; i++) {
+                const row = rows[i].trim();
+                if (!row) continue; // ข้ามบรรทัดที่ว่างเปล่า
+
+                // ข้อมูลที่ก๊อปจาก Excel จะถูกคั่นด้วยช่องว่าง (Tab หรือ \t)
+                const cols = row.split('\t');
+                
+                // เช็คว่ามีข้อมูลอย่างน้อย รหัส และ ชื่อ
+                if (cols.length >= 2) {
+                    const empId = cols[0].trim();
+                    const empName = cols[1].trim();
+                    const empDept = cols.length > 2 ? cols[2].trim() : ""; // ถ้ามีแผนกก็เอามา ถ้าไม่มีก็ปล่อยว่าง
+
+                    // ถ้าเผลอก๊อปหัวตารางมา ให้ข้ามไป
+                    if (empId.toLowerCase() === 'employee_id' || empId === '') continue;
+
+                    try {
+                        // บันทึกลง Firebase โดยใช้รหัสพนักงานเป็นชื่อเอกสาร (Document ID)
+                        await db.collection('employees').doc(empId).set({
+                            employee_name: empName,
+                            department: empDept,
+                            pin_code: "" // ตั้งค่า PIN เป็นค่าว่างรอไว้เลยตามที่เราคุยกัน
+                        });
+                        successCount++;
+                    } catch (error) {
+                        console.error("เกิดข้อผิดพลาดที่รหัส: " + empId, error);
+                    }
+                }
+            }
+
+            statusDiv.innerHTML = `<span style="color: green;">🎉 นำเข้าสำเร็จ ${successCount} รายการ! สามารถเข้าไปเช็คใน Firebase ได้เลยครับ</span>`;
+        }
+    </script>
+</body>
+</html>
