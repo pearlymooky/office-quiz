@@ -22,16 +22,11 @@
             </div>
             <div class="form-group">
                 <label for="emp-name">ชื่อ - นามสกุล:</label>
-                <input type="text" id="emp-name" placeholder="ไม่ต้องใส่คำนำหน้านาม" required>
+                <input type="text" id="emp-name" placeholder="กรอกเพื่อยืนยันตัวตนในครั้งแรก" required>
             </div>
             <div class="form-group">
-                <label for="emp-dept">แผนก / ฝ่าย:</label>
-                <select id="emp-dept">
-                    <option value="HR">ทรัพยากรบุคคล (HR)</option>
-                    <option value="IT">เทคโนโลยีสารสนเทศ (IT)</option>
-                    <option value="Sales">ฝ่ายขาย / การตลาด</option>
-                    <option value="Operation">ฝ่ายปฏิบัติการ</option>
-                </select>
+                <label for="emp-pin">รหัส PIN (ตัวเลข 4 หลัก):</label>
+                <input type="password" id="emp-pin" placeholder="ตั้งใหม่ครั้งแรก / กรอกรหัสเดิมเพื่อเข้าสอบ" maxlength="4" required>
             </div>
             <div class="form-group">
                 <label for="quiz-set">เลือกชุดแบบทดสอบ:</label>
@@ -43,7 +38,7 @@
                     <option value="5">ชุดที่ 5</option>
                 </select>
             </div>
-            <button onclick="startQuiz()">เริ่มทำแบบทดสอบ</button>
+            <button id="login-btn" onclick="checkLogin()">ตรวจสอบข้อมูลและเข้าสอบ</button>
         </div>
 
         <div id="quiz-screen" class="screen">
