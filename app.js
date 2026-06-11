@@ -25,8 +25,8 @@ async function checkLogin() {
     const pin = document.getElementById('emp-pin').value.trim();
     const loginBtn = document.getElementById('login-btn');
 
-    if (!id || !pin) { alert('กรุณากรอกรหัสพนักงานและรหัส PIN ด้วยครับ'); return; }
-    if (pin.length !== 4 || isNaN(pin)) { alert('รหัส PIN ต้องเป็นตัวเลข 4 หลักเท่านั้นครับ'); return; }
+    if (!id || !pin) { alert('กรุณากรอกรหัสพนักงานและรหัส PIN '); return; }
+    if (pin.length !== 4 || isNaN(pin)) { alert('รหัส PIN ต้องเป็นตัวเลข 4 หลักเท่านั้น'); return; }
 
     loginBtn.innerText = "กำลังตรวจสอบ..."; loginBtn.disabled = true;
 
@@ -39,7 +39,7 @@ async function checkLogin() {
         const empData = docSnap.data();
 
         if (empData.pin_code === "") {
-            if (!name) { alert('💡 เข้าใช้งานครั้งแรก กรุณากรอกชื่อ-นามสกุลด้วยครับ'); resetLoginButton(); return; }
+            if (!name) { alert('💡 เข้าใช้งานครั้งแรก กรุณากรอกชื่อ-นามสกุล'); resetLoginButton(); return; }
             if (name !== empData.employee_name) { alert('❌ ชื่อ-นามสกุลไม่ตรงกับรหัสพนักงานในฐานข้อมูล'); resetLoginButton(); return; }
             await docRef.update({ pin_code: pin });
             alert('🎉 ตั้งรหัส PIN สำเร็จ!');
@@ -71,7 +71,7 @@ async function loadQuestions() {
         let allQuestions = [];
         querySnapshot.forEach((doc) => allQuestions.push(doc.data()));
 
-        if (allQuestions.length < 20) { alert('⚠️ ข้อสอบในระบบมีไม่ถึง 20 ข้อ กรุณาเพิ่มข้อสอบก่อนครับ'); return; }
+        if (allQuestions.length < 20) { alert('⚠️ ข้อสอบในระบบมีไม่ถึง 20 ข้อ กรุณาเพิ่มข้อสอบก่อน'); return; }
 
         for (let i = allQuestions.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
