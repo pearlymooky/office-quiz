@@ -60,3 +60,9 @@ hr { border: none; border-top: 1px solid var(--border-color); margin: 20px 0; }
 .modal-actions { display: flex; justify-content: space-between; gap: 10px; margin-top: 25px; }
 .modal-actions button { flex: 1; }
 @keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.timer-box { font-size: 16px; font-weight: 600; color: var(--navy); background-color: #f0f4f8; padding: 6px 12px; border-radius: 8px; border: 1.5px solid var(--border-color); }
+.warning-pulse { animation: pulse 1s infinite; color: #c5221f !important; background-color: #fce8e6 !important; border-color: #c5221f !important; }
+@keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+.review-q { font-size: 18px !important; font-weight: 600; color: var(--navy); margin-bottom: 15px; line-height: 1.5; }
+.review-ans { font-size: 16px !important; margin-bottom: 8px; line-height: 1.5; }
+.exp-box { font-size: 16px !important; line-height: 1.6; padding: 15px !important; background: var(--gold-light); color: #8a7a4f; border-radius: 8px; margin-top: 15px; border: 1px dashed var(--gold); }
