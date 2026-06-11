@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบหลังบ้าน - ตรวจสอบคะแนน</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <style>
+        :root {
+            --navy: #002d56;
+            --gold: #a39160;
+            --bg: #f5f5f7;
+        }
+        body { font-family: 'Prompt', sans-serif; background-color: var(--bg); margin: 0; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+        
+        /* สไตล์หน้า Login ของ Admin */
+        #admin-login-box { text-align: center; padding: 50px 20px; }
+        .input-group { margin-bottom: 20px; }
+        input { padding: 12px; width: 250px; border-radius: 10px; border: 1px solid #ddd; font-family: 'Prompt'; font-size: 16px; }
+        button { padding: 12px 25px; border-radius: 10px; border: none; cursor: pointer; font-family: 'Prompt'; font-weight: 500; transition: 0.3s; }
+        .btn-navy { background-color: var(--navy); color: white; }
+        .btn-gold { background-color: var(--gold); color: white; margin-bottom: 20px; }
+        
+        /* สไตล์ตารางคะแนน */
+        #admin-dashboard { display: none; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        h2 { color: var(--navy); margin: 0; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th { background-color: var(--navy); color: white; padding: 15px; text-align: left; }
+        td { padding: 15px; border-bottom: 1px solid #eee; }
+        tr:hover { background-color: #fcfaf3; }
+        .status-pass { color: #137333; font-weight: bold; }
+        .status-fail { color: #c5221f; font-weight: bold; }
+        .search-box { padding: 10px; width: 100%; max-width: 300px; margin-bottom: 20px; border-radius: 8px; border: 1px solid #ddd; font-family: 'Prompt'; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div id="admin-login-box">
+            <h2 style="margin-bottom: 20px;">🔒 ผู้ดูแลระบบ (Admin Only)</h2>
+            <div class="input-group">
+                <input type="password" id="admin-password" placeholder="ใส่รหัสผ่านเพื่อเข้าชมคะแนน">
+            </div>
+            <button class="btn-navy" onclick="checkAdminPassword()">เข้าสู่ระบบ</button>
+        </div>
+
+        <div id="admin-dashboard">
+            <div class="header">
+                <h2>📊 รายงานผลการทดสอบทั้งหมด</h2>
+                <button class="btn-navy" style="background-color: #888;" onclick="location.reload()">ออกจากระบบ</button>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+                <input type="text" id="search-input" class="search-box" placeholder="🔍 ค้นหาชื่อ หรือ รหัสพนักงาน..." onkeyup="filterTable()">
+                <button class="btn-gold" onclick="exportToExcel()">📥 ดาวน์โหลดเป็น Excel</button>
+            </div>
+
+            <table id="results-table">
+                <thead>
+                    <tr>
+                        <th>วันที่/เวลา</th>
+                        <th>รหัสพนักงาน</th>
+                        <th>ชื่อ-นามสกุล</th>
+                        <th>แผนก</th>
+                        <th>คะแนน</th>
+                        <th>สถานะ</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // ใส่ Config ของคุณตรงนี้
+        const firebaseConfig = {
+            apiKey: "AIzaSyDY-LYy_ci9Jz5Wre4zDRCr8TP-58ng-bo",
+            authDomain: "my-office-quiz.firebaseapp.com",
+            projectId: "my-office-quiz",
+            storageBucket: "my-office-quiz.firebasestorage.app",
+            messagingSenderId: "1075817017274",
+            appId: "1:1075817017274:web:ac54fd1f8a9a0e3d06f783",
+            measurementId: "G-ZDXMQC8QB9"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // 1. ฟังก์ชันเช็ครหัสผ่าน Admin (ตั้งรหัสผ่านที่นี่)
+        function checkAdminPassword() {
+            const password = document.getElementById('admin-password').value;
+            const adminPass = "123456"; // <<-- เปลี่ยนรหัสผ่าน Admin ตรงนี้ได้เลยครับ
+
+            if (password === adminPass) {
+                document.getElementById('admin-login-box').style.display = 'none';
+                document.getElementById('admin-dashboard').style.display = 'block';
+                fetchResults(); // โหลดข้อมูลคะแนนมาแสดง
+            } else {
+                alert("รหัสผ่านไม่ถูกต้องครับ!");
+            }
+        }
+
+        // 2. ดึงข้อมูลคะแนนจาก Firebase
+        async function fetchResults() {
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = "<tr><td colspan='6' style='text-align:center;'>กำลังโหลดข้อมูล...</td></tr>";
+
+            try {
+                // ดึงข้อมูลจากคอลเลกชัน quiz_results เรียงตามเวลาล่าสุด
+                const querySnapshot = await db.collection('quiz_results').orderBy('timestamp', 'desc').get();
+                tbody.innerHTML = "";
+
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const date = data.timestamp ? data.timestamp.toDate().toLocaleString('th-TH') : '-';
+                    
+                    const row = `
+                        <tr>
+                            <td>${date}</td>
+                            <td>${data.employee_id}</td>
+                            <td>${data.employee_name}</td>
+                            <td>${data.department}</td>
+                            <td><b>${data.score} / ${data.total_questions}</b></td>
+                            <td class="${data.status === 'ผ่าน' ? 'status-pass' : 'status-fail'}">${data.status}</td>
+                        </tr>
+                    `;
+                    tbody.innerHTML += row;
+                });
+            } catch (error) {
+                console.error("Error fetching results:", error);
+                tbody.innerHTML = "<tr><td colspan='6' style='text-align:center; color:red;'>เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>";
+            }
+        }
+
+        // 3. ฟังก์ชันค้นหาข้อมูลในตาราง
+        function filterTable() {
+            const input = document.getElementById("search-input");
+            const filter = input.value.toLowerCase();
+            const table = document.getElementById("results-table");
+            const tr = table.getElementsByTagName("tr");
+
+            for (let i = 1; i < tr.length; i++) {
+                let found = false;
+                const td = tr[i].getElementsByTagName("td");
+                for (let j = 0; j < td.length; j++) {
+                    if (td[j].innerHTML.toLowerCase().indexOf(filter) > -1) {
+                        found = true;
+                    }
+                }
+                tr[i].style.display = found ? "" : "none";
+            }
+        }
+
+        // 4. ฟังก์ชันส่งออกเป็นไฟล์ Excel
+        function exportToExcel() {
+            const table = document.getElementById("results-table");
+            const wb = XLSX.utils.table_to_book(table, { sheet: "Quiz Results" });
+            XLSX.writeFile(wb, "Office_Quiz_Results.xlsx");
+        }
+    </script>
+</body>
+</html>
+
+### วิธีการใช้งานหน้าจอ Admin:
+1. กด Commit ไฟล์ `admin.html` ขึ้น GitHub
+2. เข้าลิงก์เว็บของคุณแล้วเติม `/admin.html` ต่อท้าย (เช่น `si-siph.github.io/office-quiz/admin.html`)
+3. ใส่รหัสผ่าน **`123456`** (คุณสามารถไปแก้รหัสผ่านนี้ได้ในโค้ดบรรทัดที่ 103 ครับ)
+4. เมื่อเข้าไปแล้ว ข้อมูลคะแนนทั้งหมดที่พนักงานทำไว้จะเด้งขึ้นมาทันที คุณสามารถพิมพ์ค้นหาชื่อ หรือกดปุ่ม **Download Excel** มาเก็บไว้ในเครื่องได้เลยครับ
+
+เรียบร้อยสมบูรณ์ทั้งหน้าบ้านและหลังบ้านครับ! มีส่วนไหนอยากให้ปรับจูนเพิ่มอีกไหมครับ?
