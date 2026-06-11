@@ -6,7 +6,6 @@
     <title>แบบทดสอบ ทบทวนลดหย่อน</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
-    
     <link rel="stylesheet" href="style.css">
     
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
@@ -28,19 +27,17 @@
             </div>
             <div class="form-group">
                 <label for="emp-pin">รหัส PIN (ตัวเลข 4 หลัก):</label>
-                <input type="password" id="emp-pin" placeholder="ตั้งใหม่ครั้งแรก / กรอกรหัสเดิมเพื่อเข้าสอบ" maxlength="4" required>
+                <input type="password" id="emp-pin" placeholder="ตั้งใหม่ / กรอกรหัสเดิมเพื่อเข้าสอบ" maxlength="4" required>
             </div>
             <div class="form-group">
-                <p class="notice-box">
-                    🎲 ระบบจะทำการสุ่มข้อสอบ 20 ข้อจากคลังให้คุณอัตโนมัติ
-                </p>
+                <p class="notice-box">🎲 ระบบจะทำการสุ่มข้อสอบ 20 ข้อจากคลังให้คุณอัตโนมัติ</p>
             </div>
             <button id="login-btn" class="btn-primary" onclick="checkLogin()">ตรวจสอบข้อมูลและเข้าสอบ</button>
         </div>
 
         <div id="quiz-screen" class="screen">
             <div class="quiz-header">
-                <button class="btn-back" onclick="promptBackToLogin()">❮ ออกจากการสอบ</button>
+                <button class="btn-back" onclick="promptExitQuiz()">❮ ออกจากการสอบ</button>
                 <div id="user-display" class="user-info"></div>
             </div>
             
@@ -48,16 +45,29 @@
                 <div id="progress-bar-fill" class="progress-fill"></div>
             </div>
             <div id="progress-text" class="progress-text">ข้อที่ 1 / 20</div>
-            
             <hr>
+            
             <div id="quiz-area">
-                <p style="text-align:center;">ระบบกำลังเตรียมข้อสอบ...</p>
+                <p style="text-align:center;">กำลังเตรียมข้อสอบ...</p>
+            </div>
+
+            <div class="nav-buttons" id="nav-buttons" style="display: none;">
+                <button id="prev-btn" class="btn-secondary" onclick="promptPrevQuestion()">❮ ย้อนกลับ</button>
+                <button id="next-btn" class="btn-primary" onclick="nextQuestion()">ถัดไป ❯</button>
             </div>
         </div>
 
         <div id="result-screen" class="screen">
             <h2>สรุปผลการทดสอบ</h2>
             <div id="result-area"></div>
+            <button class="btn-secondary" onclick="showReviewScreen()" style="margin-top: 15px; width: 100%;">📄 ดูเฉลยและคำอธิบาย</button>
+            <button class="btn-primary" onclick="location.reload()" style="margin-top: 10px;">กลับสู่หน้าหลัก</button>
+        </div>
+
+        <div id="review-screen" class="screen">
+            <h2>เฉลยและคำอธิบาย</h2>
+            <div id="review-area" style="max-height: 400px; overflow-y: auto; padding-right: 10px;"></div>
+            <button class="btn-primary" onclick="location.reload()" style="margin-top: 20px;">กลับสู่หน้าหลัก</button>
         </div>
     </div>
 
@@ -66,13 +76,12 @@
             <h3 id="modal-title">แจ้งเตือน</h3>
             <p id="modal-desc"></p>
             <div class="modal-actions">
-                <button class="btn-secondary" onclick="closeModal()">ยกเลิก</button>
+                <button id="modal-cancel-btn" class="btn-secondary" onclick="closeModal()">ยกเลิก</button>
                 <button id="modal-confirm-btn" class="btn-primary">ยืนยัน</button>
             </div>
         </div>
     </div>
 
     <script src="app.js"></script>
-
 </body>
 </html>
