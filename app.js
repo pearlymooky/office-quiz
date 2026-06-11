@@ -1,4 +1,3 @@
-// 1. ตั้งค่าและเชื่อมต่อ Firebase
 const firebaseConfig = {
     apiKey: "AIzaSyDY-LYy_ci9Jz5Wre4zDRCr8TP-58ng-bo",
     authDomain: "my-office-quiz.firebaseapp.com",
@@ -15,10 +14,9 @@ const db = firebase.firestore();
 let currentUser = {};
 let quizQuestions = [];
 let currentQuestionIndex = 0;
-let score = 0;
-let tempSelectedAnswer = null; // เก็บตัวเลือกที่พนักงานจิ้มไว้ชั่วคราว (ยังไม่ยืนยัน)
+let userAnswers = []; // ตัวแปร Array ไว้จำคำตอบ 20 ข้อ
 
-// 2. ฟังก์ชัน Login
+// 1. ฟังก์ชัน Login
 async function checkLogin() {
     const id = document.getElementById('emp-id').value.trim();
     const name = document.getElementById('emp-name').value.trim();
@@ -26,8 +24,7 @@ async function checkLogin() {
     const loginBtn = document.getElementById('login-btn');
 
     if (!id || !pin) { alert('กรุณากรอกรหัสพนักงานและรหัส PIN '); return; }
-    if (pin.length !== 4 || isNaN(pin)) { alert('รหัส PIN ต้องเป็นตัวเลข 4 หลักเท่านั้น'); return; }
-
+    
     loginBtn.innerText = "กำลังตรวจสอบ..."; loginBtn.disabled = true;
 
     try {
@@ -64,14 +61,14 @@ function resetLoginButton() {
     loginBtn.innerText = "ตรวจสอบข้อมูลและเข้าสอบ"; loginBtn.disabled = false;
 }
 
-// 3. ดึงและสุ่มข้อสอบ 20 ข้อ
+// 2. โหลดและสุ่มข้อสอบ
 async function loadQuestions() {
     try {
         const querySnapshot = await db.collection('questions').get();
         let allQuestions = [];
         querySnapshot.forEach((doc) => allQuestions.push(doc.data()));
 
-        if (allQuestions.length < 20) { alert('⚠️ ข้อสอบในระบบมีไม่ถึง 20 ข้อ กรุณาเพิ่มข้อสอบก่อน'); return; }
+        if (allQuestions.length < 20) { alert('⚠️ ข้อสอบในระบบมีไม่ถึง 20 ข้อ'); return; }
 
         for (let i = allQuestions.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
@@ -79,18 +76,18 @@ async function loadQuestions() {
         }
 
         quizQuestions = allQuestions.slice(0, 20);
-        currentQuestionIndex = 0; score = 0;
+        currentQuestionIndex = 0;
+        userAnswers = new Array(20).fill(null); // สร้างที่เก็บคำตอบว่างๆ 20 ช่อง
+        
         displayQuestion();
+        document.getElementById('nav-buttons').style.display = 'flex'; // โชว์ปุ่มนำทาง
     } catch (error) {
-        console.error("Load Questions Error:", error);
         document.getElementById('quiz-area').innerHTML = "<p style='color:red;'>ไม่สามารถดึงข้อสอบได้</p>";
     }
 }
 
-// 4. แสดงข้อสอบ
+// 3. แสดงข้อสอบ
 function displayQuestion() {
-    tempSelectedAnswer = null; // รีเซ็ตตัวเลือกที่จำไว้ทุกครั้งที่ขึ้นข้อใหม่
-    
     // อัปเดต Progress Bar
     const progressPercent = ((currentQuestionIndex) / 20) * 100;
     document.getElementById('progress-bar-fill').style.width = `${progressPercent}%`;
@@ -98,160 +95,159 @@ function displayQuestion() {
 
     const quizArea = document.getElementById('quiz-area');
     const currentQuiz = quizQuestions[currentQuestionIndex];
+    const savedAnswer = userAnswers[currentQuestionIndex]; // ดึงคำตอบที่เคยเลือกไว้
 
-    let html = `<div style="margin-bottom: 20px; font-weight: 500; font-size: 18px; color: var(--navy); line-height: 1.5;">${currentQuestionIndex + 1}. ${currentQuiz.question}</div>`;
+    let html = `<div style="margin-bottom: 20px; font-weight: 500; font-size: 18px; color: var(--navy); line-height: 1.5;">
+                    ${currentQuestionIndex + 1}. ${currentQuiz.question}
+                </div>`;
 
     currentQuiz.options.forEach((option, index) => {
         const optionNum = index + 1;
-        html += `<button class="option-btn" id="opt-${optionNum}" onclick="selectOption(${optionNum})">${optionNum}. ${option}</button>`;
+        // ถ้าข้อนี้เคยตอบไว้แล้ว ให้ใส่คลาส selected เพื่อไฮไลท์สี
+        const isSelected = (savedAnswer === optionNum) ? 'selected' : '';
+        html += `<button class="option-btn ${isSelected}" id="opt-${optionNum}" onclick="selectOption(${optionNum})">${optionNum}. ${option}</button>`;
     });
 
-    html += `
-        <button id="confirm-ans-btn" class="btn-primary" style="display: none; margin-top: 15px;" onclick="promptConfirmAnswer()">🔒 ยืนยันคำตอบ</button>
-        
-        <div id="explanation-box" style="display: none; padding: 15px; border-radius: 10px; margin: 20px 0; font-size: 15px; line-height: 1.5;"></div>
-        
-        <button id="next-btn" class="btn-secondary" style="display: none; width: 100%; margin-top: 10px; border-color: var(--navy);" onclick="nextQuestion()">
-            ${currentQuestionIndex === 19 ? '✅ ส่งแบบทดสอบ' : 'ข้อถัดไป ➡️'}
-        </button>
-    `;
     quizArea.innerHTML = html;
+
+    // จัดการปุ่มด้านล่าง (ถอยหลัง - เดินหน้า)
+    const prevBtn = document.getElementById('prev-btn');
+    const nextBtn = document.getElementById('next-btn');
+
+    // ถ้าอยู่ข้อแรก ซ่อนปุ่มถอยหลัง
+    prevBtn.style.visibility = (currentQuestionIndex === 0) ? 'hidden' : 'visible';
+    
+    // ถ้าอยู่ข้อสุดท้าย เปลี่ยนปุ่มถัดไปเป็นปุ่มส่งข้อสอบ
+    if (currentQuestionIndex === 19) {
+        nextBtn.innerText = "ส่งแบบทดสอบ ✅";
+        nextBtn.style.backgroundColor = "#137333"; // สีเขียว
+    } else {
+        nextBtn.innerText = "ถัดไป ❯";
+        nextBtn.style.backgroundColor = "var(--navy)";
+    }
 }
 
-// 5. ไฮไลท์ตัวเลือกชั่วคราว (ยังไม่เฉลย)
+// 4. บันทึกคำตอบเมื่อจิ้มเลือก (Auto Save เบื้องหลัง)
 function selectOption(selectedNum) {
-    tempSelectedAnswer = selectedNum;
+    userAnswers[currentQuestionIndex] = selectedNum; // จำคำตอบลง Array
     
-    // ล้างไฮไลท์จากปุ่มอื่นทั้งหมด และใส่ให้ปุ่มที่โดนคลิก
+    // เปลี่ยนสีไฮไลท์
     for(let i=1; i<=4; i++) {
         document.getElementById(`opt-${i}`).classList.remove('selected');
     }
     document.getElementById(`opt-${selectedNum}`).classList.add('selected');
-
-    // โชว์ปุ่มยืนยันคำตอบ
-    document.getElementById('confirm-ans-btn').style.display = 'block';
 }
 
-// 6. ระบบ Custom Modal สำหรับแจ้งเตือนต่างๆ
-function showModal(title, desc, confirmCallback, confirmText = "ยืนยัน") {
+// 5. ปุ่มถัดไป / ส่งข้อสอบ
+function nextQuestion() {
+    // บังคับให้ต้องเลือกคำตอบก่อนถึงจะไปต่อได้
+    if (userAnswers[currentQuestionIndex] === null) {
+        alert("กรุณาเลือกคำตอบก่อนไปข้อถัดไปครับ");
+        return;
+    }
+
+    if (currentQuestionIndex < 19) {
+        currentQuestionIndex++;
+        displayQuestion();
+    } else {
+        // อยู่ข้อ 20 กดยืนยันส่งข้อสอบ
+        showModal(
+            "ยืนยันการส่งแบบทดสอบ?", 
+            "คุณทำข้อสอบครบแล้ว ต้องการส่งแบบทดสอบเพื่อดูผลคะแนนเลยใช่หรือไม่? (จะไม่สามารถกลับมาแก้ไขได้อีก)", 
+            submitQuiz, 
+            "ส่งข้อสอบ"
+        );
+    }
+}
+
+// 6. ปุ่มถอยหลังกลับไปแก้ไข
+function promptPrevQuestion() {
+    showModal(
+        "ต้องการย้อนกลับ?", 
+        "คุณต้องการกลับไปดูหรือแก้ไขคำตอบในข้อก่อนหน้าใช่หรือไม่?", 
+        () => {
+            currentQuestionIndex--;
+            displayQuestion();
+        }, 
+        "ใช่, กลับไปแก้ไข"
+    );
+}
+
+// ระบบ Modal แจ้งเตือน
+function showModal(title, desc, confirmCallback, confirmText) {
     document.getElementById('modal-title').innerText = title;
     document.getElementById('modal-desc').innerText = desc;
     
     const confirmBtn = document.getElementById('modal-confirm-btn');
     confirmBtn.innerText = confirmText;
-    
-    // ล้าง event เดิมและใส่ event ใหม่
-    confirmBtn.onclick = () => {
-        closeModal();
-        confirmCallback();
-    };
+    confirmBtn.onclick = () => { closeModal(); confirmCallback(); };
 
     document.getElementById('custom-modal').style.display = 'flex';
 }
+function closeModal() { document.getElementById('custom-modal').style.display = 'none'; }
+function promptExitQuiz() { showModal("ออกจากระบบ?", "คะแนนที่ทำไว้จะสูญหาย ต้องการออกใช่หรือไม่?", () => location.reload(), "ออกจากระบบ"); }
 
-function closeModal() {
-    document.getElementById('custom-modal').style.display = 'none';
-}
-
-// 7. ลอจิกแจ้งเตือนตอนกดยืนยันคำตอบ
-function promptConfirmAnswer() {
-    showModal(
-        "ยืนยันคำตอบ?", 
-        "เมื่อยืนยันแล้วคุณจะไม่สามารถแก้ไขคำตอบในข้อนี้ได้อีก ต้องการส่งคำตอบเลยใช่หรือไม่?", 
-        lockAndCheckAnswer, 
-        "ส่งคำตอบ"
-    );
-}
-
-// ลอจิกแจ้งเตือนตอนกด Back กลับไปหน้า Login
-function promptBackToLogin() {
-    showModal(
-        "ต้องการออกจากการสอบ?", 
-        "คำตอบและคะแนนที่ทำไว้ทั้งหมดจะสูญหาย และคุณจะต้องเริ่มต้นทำแบบทดสอบใหม่", 
-        () => { location.reload(); }, 
-        "ออกจากระบบ"
-    );
-}
-
-// 8. เฉลยคำตอบหลังกดยืนยัน
-function lockAndCheckAnswer() {
-    const currentQuiz = quizQuestions[currentQuestionIndex];
-    const correctNum = currentQuiz.answer;
+// 7. คำนวณคะแนนตอนจบและแสดงผล
+async function submitQuiz() {
+    let finalScore = 0;
     
-    // ซ่อนปุ่มยืนยัน ป้องกันกดซ้ำ
-    document.getElementById('confirm-ans-btn').style.display = 'none';
-    
-    // ล็อกปุ่มทั้งหมด
-    for(let i=1; i<=4; i++) {
-        const btn = document.getElementById(`opt-${i}`);
-        btn.disabled = true;
-        btn.classList.remove('selected'); // เอาสีไฮไลท์ตอนแรกออก
+    // ตรวจคำตอบทั้งหมด 20 ข้อ
+    for(let i=0; i<20; i++) {
+        if (userAnswers[i] === quizQuestions[i].answer) {
+            finalScore++;
+        }
     }
 
-    const selectedBtn = document.getElementById(`opt-${tempSelectedAnswer}`);
-    const correctBtn = document.getElementById(`opt-${correctNum}`);
-
-    if (tempSelectedAnswer === correctNum) {
-        selectedBtn.classList.add('correct');
-        score++;
-    } else {
-        selectedBtn.classList.add('wrong');
-        correctBtn.classList.add('correct');
-    }
-
-    // โชว์คำอธิบาย
-    const expBox = document.getElementById('explanation-box');
-    expBox.style.display = 'block';
-    if (tempSelectedAnswer === correctNum) {
-        expBox.style.backgroundColor = '#fdfaf3'; expBox.style.color = 'var(--gold)'; expBox.style.border = '1px solid var(--gold)';
-        expBox.innerHTML = `<b>ถูกต้อง!</b> ✨ <br>${currentQuiz.explanation || ''}`;
-    } else {
-        expBox.style.backgroundColor = '#fce8e6'; expBox.style.color = '#c5221f';
-        expBox.innerHTML = `<b>ยังไม่ถูกนะ.. เฉลยคือข้อ ${correctNum}</b> 💡 <br>${currentQuiz.explanation || ''}`;
-    }
-
-    // โชว์ปุ่มถัดไป
-    document.getElementById('next-btn').style.display = 'block';
-}
-
-// 9. ไปข้อถัดไป
-function nextQuestion() {
-    currentQuestionIndex++;
-    if (currentQuestionIndex < 20) { displayQuestion(); } 
-    else { showResult(); }
-}
-
-// 10. สรุปผล
-async function showResult() {
-    // ให้ Progress Bar เต็ม 100%
     document.getElementById('progress-bar-fill').style.width = '100%';
+    document.getElementById('progress-text').innerText = `ทำครบ 20 / 20 ข้อ`;
     document.getElementById('quiz-screen').classList.remove('active');
     document.getElementById('result-screen').classList.add('active');
 
-    const passed = score >= 16;
-    const statusText = passed ? "🎉 ผ่านเกณฑ์การประเมิน" : "❌ ไม่ผ่านเกณฑ์การประเมิน";
-    const statusColor = passed ? "#137333" : "#c5221f";
+    const passed = finalScore >= 16;
     const statusBg = passed ? "#e6f4ea" : "#fce8e6";
+    const statusColor = passed ? "#137333" : "#c5221f";
 
     document.getElementById('result-area').innerHTML = `
-        <div style="text-align: center; padding: 30px; border-radius: 16px; background-color: ${statusBg}; color: ${statusColor}; margin-bottom: 25px;">
-            <h3 style="margin: 0 0 10px 0; font-size: 24px; font-family: 'Prompt';">${statusText}</h3>
-            <p style="font-size: 40px; font-weight: 600; margin: 0; font-family: 'Prompt';">${score} / 20</p>
-            <p style="margin: 10px 0 0 0; font-size: 15px;">คิดเป็น ${(score/20*100)}% (เกณฑ์ผ่านคือ 80%)</p>
+        <div style="text-align: center; padding: 30px; border-radius: 16px; background-color: ${statusBg}; color: ${statusColor}; margin-bottom: 20px;">
+            <h3 style="margin: 0 0 10px 0;">${passed ? "🎉 ผ่านเกณฑ์" : "❌ ไม่ผ่านเกณฑ์"}</h3>
+            <p style="font-size: 40px; font-weight: 600; margin: 0;">${finalScore} / 20</p>
+            <p style="margin: 10px 0 0 0;">คิดเป็น ${(finalScore/20*100)}% (เกณฑ์ผ่าน 80%)</p>
         </div>
-        <button class="btn-primary" onclick="location.reload()">กลับสู่หน้าหลัก</button>
     `;
 
+    // บันทึกลง Firebase
     try {
         await db.collection('quiz_results').add({
-            employee_id: currentUser.empId,
-            employee_name: currentUser.empName,
-            department: currentUser.empDept,
-            score: score,
-            total_questions: 20,
-            percentage: (score / 20 * 100),
-            status: passed ? "ผ่าน" : "ไม่ผ่าน",
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            employee_id: currentUser.empId, employee_name: currentUser.empName, department: currentUser.empDept,
+            score: finalScore, total_questions: 20, percentage: (finalScore / 20 * 100),
+            status: passed ? "ผ่าน" : "ไม่ผ่าน", timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
-    } catch (error) { console.error("Error saving result:", error); }
+    } catch (error) { console.error("Error saving:", error); }
+}
+
+// 8. หน้าจอทบทวนคำตอบ (Review)
+function showReviewScreen() {
+    document.getElementById('result-screen').classList.remove('active');
+    document.getElementById('review-screen').classList.add('active');
+
+    const reviewArea = document.getElementById('review-area');
+    let html = '';
+
+    quizQuestions.forEach((q, i) => {
+        const uAns = userAnswers[i];
+        const cAns = q.answer;
+        const isCorrect = (uAns === cAns);
+
+        html += `
+            <div class="review-item">
+                <div class="review-q">${i + 1}. ${q.question}</div>
+                <div class="review-ans">
+                    <b>คุณตอบ:</b> <span class="${isCorrect ? 'correct-text' : 'wrong-text'}">${q.options[uAns - 1]}</span>
+                </div>
+                ${!isCorrect ? `<div class="review-ans"><b>เฉลย:</b> <span class="correct-text">${q.options[cAns - 1]}</span></div>` : ''}
+                ${q.explanation ? `<div class="exp-box">💡 <b>คำอธิบาย:</b> ${q.explanation}</div>` : ''}
+            </div>
+        `;
+    });
+    reviewArea.innerHTML = html;
 }
