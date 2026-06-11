@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>แบบทดสอบ Risk Finance</title>
+    <title>ระบบแบบทดสอบภายในหน่วยงาน</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
     
     <link rel="stylesheet" href="style.css">
     
@@ -15,7 +17,7 @@
 
     <div class="container">
         <div id="login-screen" class="screen active">
-            <h2>ลงทะเบียนเข้าสอบ</h2>
+            <h2>เข้าสู่ระบบแบบทดสอบ</h2>
             <div class="form-group">
                 <label for="emp-id">รหัสพนักงาน:</label>
                 <input type="text" id="emp-id" placeholder="เช่น EMP001" required>
@@ -29,25 +31,44 @@
                 <input type="password" id="emp-pin" placeholder="ตั้งใหม่ครั้งแรก / กรอกรหัสเดิมเพื่อเข้าสอบ" maxlength="4" required>
             </div>
             <div class="form-group">
-                <p style="color: #1a73e8; font-weight: bold; text-align: center; background-color: #e8f0fe; padding: 12px; border-radius: 6px; margin: 0;">
-                🎲 ระบบจะทำการสุ่มข้อสอบ 20 ข้อจากคลังให้คุณอัตโนมัติ
+                <p class="notice-box">
+                    🎲 ระบบจะทำการสุ่มข้อสอบ 20 ข้อจากคลังให้คุณอัตโนมัติ
                 </p>
             </div>
-            <button id="login-btn" onclick="checkLogin()">ตรวจสอบข้อมูลและเข้าสอบ</button>
+            <button id="login-btn" class="btn-primary" onclick="checkLogin()">ตรวจสอบข้อมูลและเข้าสอบ</button>
         </div>
 
         <div id="quiz-screen" class="screen">
-            <h2>กำลังทำแบบทดสอบ</h2>
-            <div id="user-display" style="font-size: 14px; color: #666; text-align: center; margin-bottom: 10px;"></div>
+            <div class="quiz-header">
+                <button class="btn-back" onclick="promptBackToLogin()">❮ ออกจากการสอบ</button>
+                <div id="user-display" class="user-info"></div>
+            </div>
+            
+            <div class="progress-container">
+                <div id="progress-bar-fill" class="progress-fill"></div>
+            </div>
+            <div id="progress-text" class="progress-text">ข้อที่ 1 / 20</div>
+            
             <hr>
             <div id="quiz-area">
-                <p>ระบบกำลังดึงข้อสอบ...</p>
+                <p style="text-align:center;">ระบบกำลังเตรียมข้อสอบ...</p>
             </div>
         </div>
 
         <div id="result-screen" class="screen">
             <h2>สรุปผลการทดสอบ</h2>
             <div id="result-area"></div>
+        </div>
+    </div>
+
+    <div id="custom-modal" class="modal-overlay">
+        <div class="modal-box">
+            <h3 id="modal-title">แจ้งเตือน</h3>
+            <p id="modal-desc"></p>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="closeModal()">ยกเลิก</button>
+                <button id="modal-confirm-btn" class="btn-primary">ยืนยัน</button>
+            </div>
         </div>
     </div>
 
