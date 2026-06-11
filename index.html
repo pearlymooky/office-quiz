@@ -30,8 +30,12 @@
                 <input type="password" id="emp-pin" placeholder="ตั้งใหม่ / กรอกรหัสเดิมเพื่อเข้าสอบ" maxlength="4" required>
             </div>
             <div class="form-group">
-                <p class="notice-box">🎲 ระบบจะทำการสุ่มข้อสอบ 20 ข้อจากคลังให้คุณอัตโนมัติ</p>
-            </div>
+                <div style="font-weight: 600; font-size: 16px; margin-bottom: 5px;">📋 กติกาการทดสอบ:</div>
+                <ul style="text-align: left; margin: 0; padding-left: 20px; font-size: 14px; font-weight: 400; line-height: 1.6;">
+                    <li>สุ่มข้อสอบจากคลังจำนวน 20 ข้อ</li>
+                    <li><b>จำกัดเวลาในการทำแบบทดสอบ 1 ชั่วโมง</b></li>
+                    <li>สามารถทำแบบทดสอบได้<b>สูงสุด 3 ครั้ง</b> (หากไม่ผ่านเกณฑ์) ระบบจะคัดเลือกคะแนนครั้งที่ดีที่สุด</li>
+                </ul>
             <button id="login-btn" class="btn-primary" onclick="checkLogin()">ตรวจสอบข้อมูลและเข้าสอบ</button>
         </div>
 
